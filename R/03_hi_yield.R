@@ -3,18 +3,14 @@
 # Figure 4
 # =============================================================================
 # Author: Elvis F. Elli
+# Data:   data/biomass_yield.csv
+# Output: figures/fig4_hi_yield.tiff, .pdf
 # =============================================================================
 
-# --- Set working directory to project root -----------------------------------
-if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
-  root <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
-} else {
-  args     <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", args, value = TRUE)
-  root     <- dirname(dirname(normalizePath(sub("--file=", "", file_arg[1]))))
-}
-setwd(root)
-cat("Project root:", getwd(), "\n")
+# --- Project root (works in RStudio, Rscript, or source()) ------------------
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+library(here)
+cat("Project root:", here(), "\n")
 
 # --- Packages ----------------------------------------------------------------
 library(ggplot2)
@@ -23,7 +19,7 @@ library(dplyr)
 library(scales)
 
 # --- Data --------------------------------------------------------------------
-df <- read.csv("data/biomass_yield.csv")
+df <- read.csv(here("data", "biomass_yield.csv"))
 colnames(df) <- c("Biomass", "Yield")
 df$Biomass <- suppressWarnings(as.numeric(df$Biomass))
 df$Yield   <- suppressWarnings(as.numeric(df$Yield))
@@ -41,18 +37,16 @@ y_max <- 9000
 
 bm_df <- data.frame(BM = bm_values, Color = bm_colors) |>
   mutate(
-    x_start = 0,
-    y_start = 0,
     x_end   = ifelse(BM * x_max > y_max, y_max / BM, x_max),
     y_end   = ifelse(BM * x_max > y_max, y_max,       BM * x_max),
-    x_lbl_raw = x_end * 0.97,
-    y_lbl_raw = BM * x_lbl_raw,
-    exits_top = y_lbl_raw > y_max * 0.96,
-    y_lbl  = ifelse(exits_top, y_max * 0.975, y_lbl_raw),
-    x_lbl  = ifelse(exits_top, y_lbl / BM,    x_lbl_raw),
-    y_lbl  = ifelse(BM == 16000, 8500, y_lbl),
-    hjust  = ifelse(exits_top, 0, 1),
-    label  = paste0(BM / 1000, " t ha⁻¹")
+    x_lbl_r = x_end * 0.97,
+    y_lbl_r = BM * x_lbl_r,
+    exits   = y_lbl_r > y_max * 0.96,
+    y_lbl   = ifelse(exits, y_max * 0.975, y_lbl_r),
+    x_lbl   = ifelse(exits, y_lbl / BM,    x_lbl_r),
+    y_lbl   = ifelse(BM == 16000, 8500, y_lbl),
+    hjust   = ifelse(exits, 0, 1),
+    label   = paste0(BM / 1000, " t ha⁻¹")
   )
 
 # --- Plot --------------------------------------------------------------------
@@ -63,7 +57,7 @@ p <- ggplot(df, aes(x = HI, y = Yield)) +
                  color = col, linewidth = 0.65,
                  linetype = "longdash", alpha = 0.85,
                  inherit.aes = FALSE)
-  }, bm_df$x_start, bm_df$y_start, bm_df$x_end, bm_df$y_end, bm_df$Color,
+  }, 0, 0, bm_df$x_end, bm_df$y_end, bm_df$Color,
   SIMPLIFY = FALSE) +
 
   geom_point(alpha = 0.55, size = 1.8, shape = 21,
@@ -119,9 +113,8 @@ p <- ggplot(df, aes(x = HI, y = Yield)) +
   )
 
 # --- Save --------------------------------------------------------------------
-ggsave("figures/fig4_hi_yield.tiff",
+ggsave(here("figures", "fig4_hi_yield.tiff"),
        plot = p, width = 6.5, height = 5.5, dpi = 400, bg = "white")
-ggsave("figures/fig4_hi_yield.pdf",
+ggsave(here("figures", "fig4_hi_yield.pdf"),
        plot = p, width = 6.5, height = 5.5, device = cairo_pdf)
-
 cat("Saved: figures/fig4_hi_yield.tiff & .pdf\n")

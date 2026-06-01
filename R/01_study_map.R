@@ -3,19 +3,15 @@
 # Figure 2: World map of included studies
 # =============================================================================
 # Author: Elvis F. Elli
-# Created: 2025-11-04
+# Data:   data/studies_metadata.csv
+# Output: figures/fig2_study_map.tiff
 # =============================================================================
 
-# --- Set working directory to project root -----------------------------------
-if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
-  root <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
-} else {
-  args     <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", args, value = TRUE)
-  root     <- dirname(dirname(normalizePath(sub("--file=", "", file_arg[1]))))
-}
-setwd(root)
-cat("Project root:", getwd(), "\n")
+# --- Project root (works in RStudio, Rscript, or source()) ------------------
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+library(here)
+# here::here() anchors to the directory containing soybean_hi.Rproj or .here
+cat("Project root:", here(), "\n")
 
 # --- Packages ----------------------------------------------------------------
 library(tidyverse)
@@ -42,7 +38,7 @@ pub_theme <- theme(
 )
 
 # --- Data --------------------------------------------------------------------
-soybean_hi_data <- read.csv("data/studies_metadata.csv")
+df <- read.csv(here("data", "studies_metadata.csv"))
 
 world_map <- map_data("world")
 
@@ -51,7 +47,7 @@ p <- ggplot() +
   geom_polygon(data = world_map,
                aes(x = long, y = lat, group = group),
                fill = "lightgray", color = "black", linewidth = 0.3) +
-  geom_point(data = soybean_hi_data,
+  geom_point(data = df,
              aes(x = Long, y = Lat, fill = Country),
              size = 4, colour = "black", shape = 21, alpha = 0.8) +
   scale_fill_viridis_d(name = "Country") +
@@ -61,21 +57,15 @@ p <- ggplot() +
   theme(legend.position = "none")
 
 # --- Save --------------------------------------------------------------------
-ggsave("figures/fig2_study_map.tiff",
-       plot = p, width = 25, height = 15, units = "cm",
+out <- here("figures", "fig2_study_map.tiff")
+ggsave(out, plot = p, width = 25, height = 15, units = "cm",
        dpi = 600, compression = "lzw", bg = "white")
+cat("Saved:", out, "\n")
 
-cat("Saved: figures/fig2_study_map.tiff\n")
-
-# --- Summary statistics ------------------------------------------------------
-country_summary <- soybean_hi_data %>%
+# --- Summary -----------------------------------------------------------------
+df %>%
   group_by(Country) %>%
-  summarise(
-    n_studies  = n(),
-    year_range = paste(min(Paper_Year), "-", max(Paper_Year)),
-    .groups    = "drop"
-  ) %>%
-  arrange(desc(n_studies))
-
-cat("\nStudies by country:\n")
-print(country_summary)
+  summarise(n = n(), years = paste(min(Paper_Year), "-", max(Paper_Year)),
+            .groups = "drop") %>%
+  arrange(desc(n)) %>%
+  print()

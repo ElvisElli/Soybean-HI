@@ -3,18 +3,14 @@
 # Figure 3
 # =============================================================================
 # Author: Elvis F. Elli
+# Data:   data/biomass_yield.csv
+# Output: figures/fig3_biomass_yield.tiff, .pdf
 # =============================================================================
 
-# --- Set working directory to project root -----------------------------------
-if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
-  root <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
-} else {
-  args     <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", args, value = TRUE)
-  root     <- dirname(dirname(normalizePath(sub("--file=", "", file_arg[1]))))
-}
-setwd(root)
-cat("Project root:", getwd(), "\n")
+# --- Project root (works in RStudio, Rscript, or source()) ------------------
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+library(here)
+cat("Project root:", here(), "\n")
 
 # --- Packages ----------------------------------------------------------------
 library(ggplot2)
@@ -23,7 +19,7 @@ library(dplyr)
 library(scales)
 
 # --- Data --------------------------------------------------------------------
-df <- read.csv("data/biomass_yield.csv")
+df <- read.csv(here("data", "biomass_yield.csv"))
 colnames(df) <- c("Biomass", "Yield")
 df$Biomass <- suppressWarnings(as.numeric(df$Biomass))
 df$Yield   <- suppressWarnings(as.numeric(df$Yield))
@@ -110,9 +106,8 @@ p <- ggplot(df, aes(x = Biomass, y = Yield)) +
   )
 
 # --- Save --------------------------------------------------------------------
-ggsave("figures/fig3_biomass_yield.tiff",
+ggsave(here("figures", "fig3_biomass_yield.tiff"),
        plot = p, width = 6.5, height = 5.5, dpi = 400, bg = "white")
-ggsave("figures/fig3_biomass_yield.pdf",
+ggsave(here("figures", "fig3_biomass_yield.pdf"),
        plot = p, width = 6.5, height = 5.5, device = cairo_pdf)
-
 cat("Saved: figures/fig3_biomass_yield.tiff & .pdf\n")
