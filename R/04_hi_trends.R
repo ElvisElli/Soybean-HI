@@ -1,24 +1,22 @@
 # =============================================================================
 # Harvest Index vs. Year of Cultivar Release — Genetic Gain Analysis
-# Figure 5  (single-panel)
+# Figure 5: two versions
+#   fig5_hi_trends.tiff/.pdf         — single panel, all lines together
+#   fig5_hi_trends_facets.tiff/.pdf  — multi-panel, one facet per study
 # =============================================================================
 # Author: Elvis F. Elli
-# Data:   data/hi_yor.csv  (digitised from 6 published studies)
-# Output: figures/fig5_hi_trends.tiff, .pdf
+# Data:   data/hi_yor.csv
 # =============================================================================
 
-# --- Project root ------------------------------------------------------------
 if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
 library(here)
 cat("Project root:", here(), "\n")
 
-# --- Packages ----------------------------------------------------------------
 library(ggplot2)
 library(ggpmisc)
 library(ggrepel)
 library(dplyr)
 library(scales)
-library(grid)
 
 # --- Data --------------------------------------------------------------------
 df <- read.csv(here("data", "hi_yor.csv"), header = TRUE)
@@ -52,71 +50,54 @@ pal <- c(
   "Waqar et al. (2025)"     = "#b15928"
 )
 
-# --- Per-study stats ---------------------------------------------------------
+# --- Per-study regression stats ----------------------------------------------
 stats_df <- df %>%
   group_by(Study) %>%
   summarise(
-    n          = n(),
-    yor_min    = min(YOR),
-    yor_max    = max(YOR),
-    hi_mean    = mean(HI),
-    slope      = coef(lm(HI ~ YOR))[2],
-    intercept  = coef(lm(HI ~ YOR))[1],
-    r2         = summary(lm(HI ~ YOR))$r.squared,
-    .groups    = "drop"
+    n         = n(),
+    yor_min   = min(YOR),
+    yor_max   = max(YOR),
+    hi_mean   = mean(HI),
+    slope     = coef(lm(HI ~ YOR))[2],
+    intercept = coef(lm(HI ~ YOR))[1],
+    r2        = summary(lm(HI ~ YOR))$r.squared,
+    .groups   = "drop"
   ) %>%
   mutate(
     rel_slope = slope / hi_mean * 100,
-    # predicted y at right end of each line
     hi_end    = intercept + slope * yor_max,
-    # arrow: span 12 years near the centre of each line
-    arr_x0    = (yor_min + yor_max) / 2 - 6,
-    arr_x1    = (yor_min + yor_max) / 2 + 6,
-    arr_y0    = intercept + slope * arr_x0,
-    arr_y1    = intercept + slope * arr_x1,
-    # two-line label: study name + slope stats
-    label     = paste0(
+    # ASCII-safe label: avoid Unicode superscripts that fail in TIFF/PDF devices
+    label = paste0(
       as.character(Study), "\n",
-      sprintf("β = %.3f×10⁻³ yr⁻¹ (%.2f%% yr⁻¹)",
+      sprintf("b = %.2f x10-3 yr-1 (%.2f%% yr-1)",
               slope * 1000, rel_slope)
     )
   )
 
-# --- Build smooth predicted lines (one per study) ---------------------------
+# --- Smooth predicted lines (one per study) ----------------------------------
 line_df <- do.call(rbind, lapply(seq_len(nrow(stats_df)), function(i) {
   s <- stats_df[i, ]
   yor_seq <- seq(s$yor_min, s$yor_max, length.out = 100)
   data.frame(
-    Study     = as.character(s$Study),
-    YOR       = yor_seq,
-    HI        = s$intercept + s$slope * yor_seq
+    Study = as.character(s$Study),
+    YOR   = yor_seq,
+    HI    = s$intercept + s$slope * yor_seq
   )
 }))
 line_df$Study <- factor(line_df$Study, levels = study_order)
 
-# --- Plot parameters ---------------------------------------------------------
-x_lim <- c(1918, 2080)   # extra right margin for labels
+# =============================================================================
+# FIGURE 5A — Single panel (all lines together, labelled at right end)
+# =============================================================================
+x_lim <- c(1918, 2085)
 y_lim <- c(0.14, 0.68)
 
-p <- ggplot() +
+p_single <- ggplot() +
 
-  # --- Regression lines ------------------------------------------------------
-  geom_line(data  = line_df,
+  geom_line(data = line_df,
             aes(x = YOR, y = HI, colour = Study),
             linewidth = 1.0) +
 
-  # --- Directional arrows on each line (show slope direction) ----------------
-  geom_segment(
-    data  = stats_df,
-    aes(x = arr_x0, xend = arr_x1,
-        y = arr_y0, yend = arr_y1,
-        colour = Study),
-    arrow       = arrow(length = unit(0.20, "cm"), type = "closed"),
-    linewidth   = 1.3,
-    show.legend = FALSE
-  ) +
-
-  # --- Repelled labels at end of each line ------------------------------------
   geom_text_repel(
     data  = stats_df,
     aes(x = yor_max, y = hi_end, label = label, colour = Study),
@@ -132,10 +113,9 @@ p <- ggplot() +
     lineheight     = 1.25,
     show.legend    = FALSE,
     seed           = 42,
-    xlim           = c(2025, 2080)   # keep labels in right margin
+    xlim           = c(2025, 2085)
   ) +
 
-  # --- Axes & scales ---------------------------------------------------------
   scale_colour_manual(values = pal, name = NULL) +
 
   scale_x_continuous(
@@ -152,7 +132,6 @@ p <- ggplot() +
     expand = c(0, 0)
   ) +
 
-  # --- Theme -----------------------------------------------------------------
   theme_classic(base_size = 11, base_family = "sans") +
   theme(
     legend.position  = "none",
@@ -166,12 +145,75 @@ p <- ggplot() +
     panel.background = element_rect(fill = "white", color = NA)
   )
 
-# --- Save --------------------------------------------------------------------
 ggsave(here("figures", "fig5_hi_trends.tiff"),
-       plot = p, width = 8.5, height = 5, dpi = 400, bg = "white")
+       plot = p_single, width = 8.5, height = 5, dpi = 400, bg = "white")
 ggsave(here("figures", "fig5_hi_trends.pdf"),
-       plot = p, width = 8.5, height = 5, device = cairo_pdf)
+       plot = p_single, width = 8.5, height = 5, device = cairo_pdf)
 cat("Saved: figures/fig5_hi_trends.tiff & .pdf\n")
+
+# =============================================================================
+# FIGURE 5B — Multi-panel faceted version (one panel per study)
+# =============================================================================
+
+# Facet label: study name + slope line
+facet_labels <- setNames(
+  paste0(
+    study_order, "\n",
+    sprintf("b = %.2f x10-3 yr-1  R2 = %.3f",
+            stats_df$slope[match(study_order, stats_df$Study)] * 1000,
+            stats_df$r2[match(study_order, stats_df$Study)])
+  ),
+  study_order
+)
+
+p_facets <- ggplot(df, aes(x = YOR, y = HI, colour = Study)) +
+
+  geom_point(alpha = 0.55, size = 1.2, shape = 16) +
+
+  geom_line(data = line_df,
+            aes(x = YOR, y = HI, colour = Study),
+            linewidth = 0.9, inherit.aes = FALSE) +
+
+  facet_wrap(~ Study,
+             ncol    = 3,
+             scales  = "free_x",
+             labeller = labeller(Study = facet_labels)) +
+
+  scale_colour_manual(values = pal) +
+
+  scale_y_continuous(
+    name   = "Harvest Index (HI)",
+    limits = c(0.10, 0.70),
+    breaks = seq(0.10, 0.70, 0.10),
+    labels = number_format(accuracy = 0.01),
+    expand = c(0, 0)
+  ) +
+  scale_x_continuous(
+    name   = "Year of Cultivar Release",
+    expand = c(0.03, 0)
+  ) +
+
+  theme_classic(base_size = 10, base_family = "sans") +
+  theme(
+    legend.position  = "none",
+    strip.background = element_rect(fill = "grey92", color = "black", linewidth = 0.4),
+    strip.text       = element_text(size = 8, lineheight = 1.2, margin = margin(3, 3, 3, 3)),
+    axis.title       = element_text(size = 10, face = "plain", color = "black"),
+    axis.text        = element_text(size = 8,  color = "black"),
+    axis.ticks       = element_line(color = "black", linewidth = 0.3),
+    axis.line        = element_line(color = "black", linewidth = 0.4),
+    panel.border     = element_rect(color = "black", fill = NA, linewidth = 0.4),
+    panel.spacing    = unit(0.6, "lines"),
+    plot.margin      = margin(10, 10, 10, 10, "pt"),
+    plot.background  = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+
+ggsave(here("figures", "fig5_hi_trends_facets.tiff"),
+       plot = p_facets, width = 10, height = 7, dpi = 400, bg = "white")
+ggsave(here("figures", "fig5_hi_trends_facets.pdf"),
+       plot = p_facets, width = 10, height = 7, device = cairo_pdf)
+cat("Saved: figures/fig5_hi_trends_facets.tiff & .pdf\n")
 
 # --- Console summary ---------------------------------------------------------
 cat("\nPer-study slope summary:\n")
@@ -183,5 +225,5 @@ stats_df %>%
     r2        = round(r2, 3),
     hi_mean   = round(hi_mean, 3)
   ) %>%
-  rename("slope_x1e3" = slope, "rel_slope_%_yr" = rel_slope) %>%
+  rename("slope_x1e3" = slope, "rel_%_yr" = rel_slope) %>%
   print(width = 120)
