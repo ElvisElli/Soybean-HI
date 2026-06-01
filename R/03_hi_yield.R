@@ -72,8 +72,8 @@ p <- ggplot(df, aes(x = HI, y = Yield)) +
     formula = y ~ x,
     parse   = TRUE,
     size    = 3.5,
-    label.x = 0.05,
-    label.y = 0.97,
+    label.x = 0.04,
+    label.y = 0.88,
     color   = "black"
   ) +
 
