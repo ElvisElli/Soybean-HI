@@ -69,8 +69,7 @@ stats_df <- df %>%
     # ASCII-safe label: avoid Unicode superscripts that fail in TIFF/PDF devices
     label = paste0(
       as.character(Study), "\n",
-      sprintf("b = %.2f x10-3 yr-1 (%.2f%% yr-1)",
-              slope * 1000, rel_slope)
+      sprintf("%.2f%% yr\u207b\u00b9", rel_slope)
     )
   )
 
@@ -90,7 +89,7 @@ line_df$Study <- factor(line_df$Study, levels = study_order)
 # FIGURE 5A — Single panel (all lines together, labelled at right end)
 # =============================================================================
 x_lim <- c(1918, 2085)
-y_lim <- c(0.14, 0.68)
+y_lim <- c(0, 0.7)
 
 p_single <- ggplot() +
 
@@ -119,19 +118,19 @@ p_single <- ggplot() +
   scale_colour_manual(values = pal, name = NULL) +
 
   scale_x_continuous(
-    name   = "Year of Cultivar Release",
+    name   = "Year of release",
     limits = x_lim,
     breaks = seq(1920, 2020, 20),
     expand = c(0, 0)
   ) +
   scale_y_continuous(
-    name   = "Harvest Index (HI)",
+    name   = "Harvest index",
     limits = y_lim,
-    breaks = seq(0.15, 0.65, 0.10),
+    breaks = seq(0, 0.7, 0.10),
     labels = number_format(accuracy = 0.01),
-    expand = c(0, 0)
+    expand = c(0.01, 0.01)
   ) +
-
+ 
   theme_classic(base_size = 11, base_family = "sans") +
   theme(
     legend.position  = "none",
@@ -146,9 +145,8 @@ p_single <- ggplot() +
   )
 
 ggsave(here("figures", "fig5_hi_trends.tiff"),
-       plot = p_single, width = 8.5, height = 5, dpi = 400, bg = "white")
-ggsave(here("figures", "fig5_hi_trends.pdf"),
-       plot = p_single, width = 8.5, height = 5, device = cairo_pdf)
+       plot = p_single, width = 12, height = 10, dpi = 600, bg = "white",units = "cm")
+
 cat("Saved: figures/fig5_hi_trends.tiff & .pdf\n")
 
 # =============================================================================
@@ -158,11 +156,7 @@ cat("Saved: figures/fig5_hi_trends.tiff & .pdf\n")
 # Facet label: study name + slope line
 facet_labels <- setNames(
   paste0(
-    study_order, "\n",
-    sprintf("b = %.2f x10-3 yr-1  R2 = %.3f",
-            stats_df$slope[match(study_order, stats_df$Study)] * 1000,
-            stats_df$r2[match(study_order, stats_df$Study)])
-  ),
+    study_order),
   study_order
 )
 
@@ -210,10 +204,7 @@ p_facets <- ggplot(df, aes(x = YOR, y = HI, colour = Study)) +
   )
 
 ggsave(here("figures", "fig5_hi_trends_facets.tiff"),
-       plot = p_facets, width = 10, height = 7, dpi = 400, bg = "white")
-ggsave(here("figures", "fig5_hi_trends_facets.pdf"),
-       plot = p_facets, width = 10, height = 7, device = cairo_pdf)
-cat("Saved: figures/fig5_hi_trends_facets.tiff & .pdf\n")
+       plot = p_facets, width = 20, height = 15, dpi = 600, bg = "white",units = "cm")
 
 # --- Console summary ---------------------------------------------------------
 cat("\nPer-study slope summary:\n")
